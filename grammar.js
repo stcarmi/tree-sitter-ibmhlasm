@@ -120,7 +120,8 @@ module.exports = grammar({
     operation: $ => /[A-Za-z0-9]+/,
 
     branch_operation: $ => choice(
-      "B", "BALR", "BC", "BCR", "BE", "BZ", "BH", "BNE", "BNZ", "BL", "BLE", "BP", "BPE", "BPR", "BR", "BHR", "BNR", "BRL", "BNER", "BNHR", "BNLR", "BNPR", "BNR", "BPR", "BRAS", "BRASL", "BRC", "BRCL", "BXH", "BXLE"
+      "B", "BALR", "BC", "BCR", "BE", "BZ", "BH", "BNE", "BNZ", "BL", "BLE", "BP", "BPE", "BPR", "BR", "BHR", "BNR", "BRL", "BNER", "BNHR", "BNLR", "BNPR", "BNR", "BPR", "BRAS", "BRASL", "BRC", "BRCL", "BXH", "BXLE",
+      "BO", "BOR", "BM", "BMR", "BZ", "BZR", "BNO", "BNOR", "BNM", "BNMR", "BNZ", "BNZR"
     ),
 
     _alphanum_str: $ => /[A-Za-z0-9]+/,
