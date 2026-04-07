@@ -1,7 +1,16 @@
 #include "tree_sitter/parser.h"
-#include <stdio.h>
-#include <wctype.h>
-#include <ctype.h>
+#include <stdbool.h>
+
+// Inline replacements for wctype/ctype functions (WASM compatible)
+static inline bool is_space(int c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+}
+static inline bool is_blank(int c) {
+  return c == ' ' || c == '\t';
+}
+static inline bool is_cntrl(int c) {
+  return (c >= 0 && c < 32) || c == 127;
+}
 
 enum TokenType {
   NAME,
@@ -23,8 +32,8 @@ static void skip(TSLexer * lexer)
 static bool scan_non_whitespace(TSLexer * lexer)
 {
     bool did_scan = false;
-    bool iswhitespace = iswspace(lexer->lookahead);
-    while (iswspace(lexer->lookahead) == 0) {
+    bool iswhitespace = is_space(lexer->lookahead);
+    while (is_space(lexer->lookahead) == 0) {
       if (lexer->eof(lexer) != false) {
         return true;
       }
@@ -35,11 +44,11 @@ static bool scan_non_whitespace(TSLexer * lexer)
 
 static bool skip_whitespace(TSLexer * lexer)
 {
-  while ((lexer->eof(lexer) == 0) && (isblank(lexer->lookahead) != 0)) { 
+  while ((lexer->eof(lexer) == 0) && (is_blank(lexer->lookahead) != 0)) { 
     skip(lexer);
   }
   // If we skip all the way to the end of the line, then there's nothing else here
-  if (iswcntrl(lexer->lookahead) != 0) {
+  if (is_cntrl(lexer->lookahead) != 0) {
       return false;
     }
   else {
@@ -78,7 +87,7 @@ static bool keep_parsing_operand(TSLexer * lexer, bool continuation_line, bool i
   * We're at a newline and we're expecting a continuation line next
   * We're in the middle of quotes (spaces OK in this case)  TODO: hitting a newline should bail here, in case somehow we get a single quote!
   */
-  if ((lexer->eof(lexer) == 0) && (iswspace(lexer->lookahead) == 0 || (continuation_line == true && iswcntrl(lexer->lookahead)) || (in_quoted_string == true))) {
+  if ((lexer->eof(lexer) == 0) && (is_space(lexer->lookahead) == 0 || (continuation_line == true && is_cntrl(lexer->lookahead)) || (in_quoted_string == true))) {
     return true;
   }
   else {
@@ -92,7 +101,7 @@ static bool keep_parsing_remark(TSLexer * lexer, bool continuation_line, bool in
   * We're not at the end of the line
   * We're at a newline and we're expecting a continuation line next
   */
-  if ((lexer->eof(lexer) == 0) && (iswcntrl(lexer->lookahead) == 0 || (continuation_line == true && iswcntrl(lexer->lookahead)))) {
+  if ((lexer->eof(lexer) == 0) && (is_cntrl(lexer->lookahead) == 0 || (continuation_line == true && is_cntrl(lexer->lookahead)))) {
     return true;
   }
   else {
@@ -107,7 +116,7 @@ static bool keep_parsing_comment(TSLexer * lexer, bool continuation_line, bool i
   * We're not at the end of the line
   * We're at a newline and we're expecting a continuation line next
   */
-  if ((lexer->eof(lexer) == 0) && (iswcntrl(lexer->lookahead) == 0 || (continuation_line == true && iswcntrl(lexer->lookahead)))) {
+  if ((lexer->eof(lexer) == 0) && (is_cntrl(lexer->lookahead) == 0 || (continuation_line == true && is_cntrl(lexer->lookahead)))) {
     return true;
   }
   else {
@@ -172,12 +181,12 @@ static enum TokenType parse_w_cont(TSLexer * lexer, enum TokenType current_token
     }
 
     // If a line has a non-whitespace character in column 72, then the next line will be a continuation of it
-    if (lexer->get_column(lexer) == 72 && iswspace(lexer->lookahead) == 0) {
+    if (lexer->get_column(lexer) == 72 && is_space(lexer->lookahead) == 0) {
       continuation_line = true;
     }
 
     // If we hit the end of a line, and expect a continuation...
-    if (iswcntrl(lexer->lookahead) && continuation_line == true) { // TODO: Maybe this should be a while?
+    if (is_cntrl(lexer->lookahead) && continuation_line == true) { // TODO: Maybe this should be a while?
 
       while (continuation_line) {
         // Jump down to the next line to read the continuation
@@ -190,10 +199,10 @@ static enum TokenType parse_w_cont(TSLexer * lexer, enum TokenType current_token
         skip_to_cont_column(lexer);
 
         // Read in the symbol on the continuation line
-        while (iswspace(lexer->lookahead) == 0) {
+        while (is_space(lexer->lookahead) == 0) {
 
           // Check if there's going to be another continuation line afterwards
-          if (lexer->get_column(lexer) == 72 && iswspace(lexer->lookahead) == 0) {
+          if (lexer->get_column(lexer) == 72 && is_space(lexer->lookahead) == 0) {
             continuation_line = true;
           }
           advance(lexer);
@@ -229,8 +238,8 @@ bool tree_sitter_ibmhlasm_external_scanner_scan(void *payload, TSLexer *lexer,
       return true;
     }
     else {
-      if (lexer->get_column(lexer) == 0 && lexer->eof(lexer) == 0 && iswcntrl(lexer->lookahead) == 0 && iswspace(lexer->lookahead) == 0) {
-        while (iswspace(lexer->lookahead) == 0) {
+      if (lexer->get_column(lexer) == 0 && lexer->eof(lexer) == 0 && is_cntrl(lexer->lookahead) == 0 && is_space(lexer->lookahead) == 0) {
+        while (is_space(lexer->lookahead) == 0) {
           advance(lexer);
         }
         lexer->result_symbol = NAME;
